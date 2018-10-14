@@ -1,0 +1,39 @@
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+
+source = requests.get('https://en.wikipedia.org/wiki/List_of_postal_codes_of_Canada:_M').text
+soup = BeautifulSoup(source, 'lxml')
+
+FSA = []
+for post in soup.find_all('td'):
+    code = post.text
+    if code == '':
+        break
+    else:
+        last_chr = int(len(code))
+        last_chr = last_chr - 1
+        if code[last_chr] == '\n':
+            code = code[:-1]
+        FSA.append(code)
+post_dict = {}
+postcode = []
+burrough = []
+neighbourhood = []
+while len(FSA) > 2:
+    postcode.append(FSA[0])
+    burrough.append(FSA[1])
+    neighbourhood.append(FSA[2])
+    del FSA[0:3]
+
+post_dic = {'Postcode':postcode, 'Burrough':burrough, 'Neighborhood':neighbourhood}
+
+df_post = pd.DataFrame(post_dic)
+
+df_post = df_post[df_post.Burrough != 'Not assigned']
+
+df_post = df_post.groupby(['Postcode', 'Burrough'])['Neighborhood'].apply(', '.join).reset_index()
+
+df_post.loc[df_post.Neighborhood == 'Not assigned', 'Neighborhood'] = df_post.Burrough
+
+df_post.shape
